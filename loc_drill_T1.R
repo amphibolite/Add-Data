@@ -1,0 +1,37 @@
+library(readxl)
+library(dplyr)
+library(tidyverse)
+library(tidyr)
+
+loc_drill <- read_csv("Add Date/location_drillhole_HYNY_T1NY_T3XV.csv",
+                      col_names=c("drillhole","date","block","easting","northing",
+                                  "elev","x","y","z"))
+loc_drill <- mutate(loc_drill, date=as.character(date))
+
+T1_geo    <- read_csv("Add Date/T1_geo.csv")
+T1_geo    <- select(T1_geo, "drillhole","Date","Block","E/W","N/S","ELEV")
+T1_geo    <- mutate(T1_geo, drillhole=str_replace_all(drillhole,"T1-15-","TNY"))
+T1_geo    <- mutate(T1_geo, drillhole=str_replace_all(drillhole,"_T1","TYB"))
+T1_geo    <- mutate(T1_geo, numb=str_extract_all(drillhole,"[0-9]{1,}"))
+T1_geo    <- mutate(T1_geo, numb=as.character(numb))
+T1_geo    <- mutate(T1_geo, numb=str_pad(numb, 4, side="left", pad="0"))
+T1_geo    <- mutate(T1_geo, drillhole=str_extract_all(drillhole,"[A-Za-z]{1,}"))
+T1_geo    <- mutate(T1_geo, drillhole=str_replace_all(drillhole, "TNY","T1NY"))
+T1_geo    <- mutate(T1_geo, drillhole=str_replace_all(drillhole, "TYB","T1YB"))
+T1_geo    <- unite(T1_geo,drillhole,drillhole,numb,sep="")
+T1_geo    <- separate(T1_geo, Date, into=c("date","month","year"),sep="-")
+T1_geo    <- mutate(T1_geo, month=match(T1_geo$month,month.abb))
+T1_geo    <- mutate(T1_geo, month=str_pad(month, 2, side="left", pad="0"))
+T1_geo    <- mutate(T1_geo, date=str_pad(date, 2, side="left", pad="0"))
+T1_geo    <- mutate(T1_geo, year=str_pad(year, 3, side="left", pad="0"))
+T1_geo    <- mutate(T1_geo, year=str_pad(year, 4, side="left", pad="2"))
+T1_geo    <- unite(T1_geo, date, year, month, date, sep="-")
+
+loc_T1    <- left_join(loc_drill, T1_geo, by="drillhole")
+loc_T1    <- unite(loc_T1, block, block, Block, sep="", na.rm=TRUE)
+loc_T1    <- unite(loc_T1, easting, easting, "E/W", sep="", na.rm=TRUE)
+loc_T1    <- unite(loc_T1, northing, northing, "N/S", sep="", na.rm=TRUE)
+loc_T1    <- unite(loc_T1, elev, elev, ELEV, sep="", na.rm=TRUE)
+loc_T1    <- mutate(loc_T1, date=ifelse(is.na(date.x)==TRUE, date.y, 
+                                         date.x))
+loc_T1    <- select(loc_T1, drillhole, date, block, easting, northing,elev,x,y,z)
